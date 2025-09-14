@@ -67,9 +67,9 @@ jobs:
       
       - name: Test API endpoints
         run: |
-          curl -f http://localhost:8000/health
+          curl -f http://localhost:8080/health
 
-          curl -X POST http://localhost:8000/predict \
+          curl -X POST http://localhost:8080/predict \
             -H "Content-Type: application/json" \
             -d '{"text": "This book was absolutely amazing! I loved every single page. Wow!!"}'
       

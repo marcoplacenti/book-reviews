@@ -13,8 +13,8 @@ docker compose up -d sentiment-api
 sleep 30
 python -m pytest tests/test_serving.py -v
 
-curl -X POST http://localhost:8000/health
-curl -X POST http://localhost:8000/predict \
+curl -X POST http://localhost:8080/health
+curl -X POST http://localhost:8080/predict \
     -H "Content-Type: application/json" \
     -d '{"text": "This book was absolutely amazing! I loved every single page. Wow!!"}'
 
