@@ -93,7 +93,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: trained-model
-          path: .
+          path: ./models/
+
+      - name: Check models/ folder content
+        run: |
+          ls .
+          ls models/
       
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
