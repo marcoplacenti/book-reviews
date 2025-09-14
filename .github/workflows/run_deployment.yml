@@ -46,8 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: trained-model
-          path: |
-            models/
+          path: models/*
           retention-days: 30
 
       - name: Build Docker image
