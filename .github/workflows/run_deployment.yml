@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  PROJECT_ID: book-reviews-472014
+  REGION: europe-north2
+  SERVICE_NAME: book-reviews-sentiment-analysis
+  ARTIFACT_REGISTRY: europe-north2-docker.pkg.dev
+  REPOSITORY: book-reviews-docker-repository
+  IMAGE_NAME: book-reviews-docker-repository
+
 jobs:
   train-deploy:
     name: Test Training Pipeline
@@ -63,3 +71,76 @@ jobs:
         run: |
           cd deployment
           docker compose down
+
+  deploy-to-gcp:
+    name: Deploy to Google Cloud Run
+    runs-on: ubuntu-latest
+    needs: train-deploy
+    if: github.ref == 'refs/heads/master'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download model artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: trained-model
+          path: .
+      
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
+      
+      - name: Build and push Docker image
+        run: |
+          # Build image with deployment context
+          docker build -f deployment/Dockerfile -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:latest
+          
+          # Push images
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:latest
+      
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            # --memory 1Gi \
+            # --cpu 1 \
+            # --timeout 300 \
+            # --max-instances 10 \
+            # --port 8000
+      
+      - name: Get service URL
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --platform=managed --region=${{ env.REGION }} --format='value(status.url)')
+          echo "Service deployed to: $SERVICE_URL"
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
+      
+      - name: Test deployed service
+        run: |
+          # Wait a bit for the service to be fully ready
+          sleep 10
+          
+          # Test health endpoint
+          curl -f ${{ env.SERVICE_URL }}/health
+          
+          # Test prediction endpoint
+          curl -X POST ${{ env.SERVICE_URL }}/predict \
+            -H "Content-Type: application/json" \
+            -d '{"text": "This book was absolutely amazing! I loved every single page. Wow!!"}'
+
