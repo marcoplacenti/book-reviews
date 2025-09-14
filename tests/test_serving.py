@@ -93,7 +93,7 @@ class TestAPIEndpoints(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # This requires the API server to be running
-        cls.base_url = "http://localhost:8000"
+        cls.base_url = "http://localhost:8080"
 
     def test_health_endpoint(self):
         """Test that the /health endpoint returns correct status and model information."""
@@ -224,7 +224,7 @@ class TestAPIEndpoints(unittest.TestCase):
 class TestPerformance(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.base_url = "http://localhost:8000"
+        cls.base_url = "http://localhost:8080"
 
     def test_latency_requirements(self):
         """Test that API latency meets performance requirements (P99 < 300ms, average < 50ms)."""
