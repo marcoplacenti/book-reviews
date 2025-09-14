@@ -23,16 +23,17 @@ COPY . .
 RUN mkdir -p models
 
 # Expose the port the app runs on
-EXPOSE 8000
+EXPOSE 8080
 
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # Run the FastAPI application
 CMD ["python", "-m", "serving.api"]
